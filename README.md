@@ -8,4 +8,4 @@
 * Complete all the questions in **PR03personalassessment.Rmd** *individually*
 * Make sure everyone in your group has a final copy of the group work!
 * See our AsULearn course for more detailed instructions/submissions.
-* We will discuss PR03_ExamplePresentation.Rmd (slides) in class.
+* We will discuss **PR03_ExamplePresentation.Rmd** (slides) in class.
