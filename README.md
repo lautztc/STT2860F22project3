@@ -7,3 +7,4 @@
 * You are welcome to talk about **PR03streamingdata.Rmd** with your group
 * Complete all the questions in **PR03personalassessment.Rmd** *individually*
 * Make sure everyone in your group has a final copy of the group work!
+* See our AsULearn course for more detailed instructions/submissions.
