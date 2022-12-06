@@ -24,7 +24,7 @@ knitr::opts_chunk$set(
 ### Packages Used
 
 ```{r loadpackages}
-
+library(tidyverse)
 ```
 
 ### Datasets Used
@@ -43,6 +43,7 @@ Francis Galton, a cousin of Charles Darwin, studied the relationship between par
 * `Height`: child’s measured height in inches
 
 ```{r loadgaltondata}
+galtondata <- readRDS("data/galtondata.rds")
 
 ```
 
@@ -74,7 +75,22 @@ Manipulate the dataset so that it has the following structure.
    * ascending order of measured height within each sex of child
 
 ```{r datasetmanip1}
+galtondata1 <- galtondata %>%
+mutate(MotherT = 1.08 * Mother,
+         HeightT = if_else(Child == "Daughter", 1.08 * Height, Height),
+         Midparent = (Father + MotherT) / 2, 
+      	 Child = tolower(Child)) %>%
+select(FamilyID, Children, Father, MotherT, Midparent, Child, Height, HeightT) %>%
+rename(familyid = FamilyID,
+          num_children = Children,
+          father_ht = Father, 
+          mother_ht = MotherT, 
+          child_sex = Child,
+          child_ht_raw = Height, 
+      	  child_ht = HeightT) %>%
+arrange(familyid, desc(child_sex), child_ht_raw)
 
+head(galtondata1, n = 4)
 ```
 
 #### Parents Dataset
@@ -82,7 +98,8 @@ Manipulate the dataset so that it has the following structure.
 From the child dataset, select the variables `familyid`, `num_children`, `father_ht`, and `mother_ht`. Use `distinct()` to reduce the dataset so it contains only one unique row per family. (Hint: The final dataset should have 205 rows/observations and four variables/columns.)
 
 ```{r datasetmanip2}
-
+parentdata <- select(galtondata1, c("familyid", "num_children", "father_ht", "mother_ht")) %>%
+distinct(familyid, .keep_all = TRUE)
 ```
 
 ### Visualization 1: Updated Scatterplot
@@ -116,7 +133,18 @@ Include the following.
 * use `theme()` to move the legend to the bottom of the scatterplot
 
 ```{r updatedscatterplot}
-
+ggplot(galtondata1, aes(x = child_ht, y = Midparent, color = child_sex)) +
+       geom_point(size = 0.9, alpha = 0.6) + 
+		scale_color_manual(values = c("red", "skyblue")) +
+		coord_fixed() +
+		scale_x_continuous(breaks = seq(60, 80, 1)) + 
+		scale_y_continuous(breaks = seq(64, 75, 1)) +
+		labs(title = "Mid-Parent Height vs Child Height",
+        x = "Height of the Child (Inches)", 
+		y = "Mid-Parent Height (Inches)",
+            color = "Gender of Child") + 
+		theme_linedraw() + 
+		theme(legend.position = "bottom")
 ```
 
 ### Visualization 2: "Transmuting" Effect
@@ -128,13 +156,29 @@ Include the following.
 Use `histogram()` or `density()` to plot `child_ht_raw`. Use faceting so that there is a separate plot for sons and daughters, with one plot above the other (*not* side by side). If you use a histogram, change the default `bins = 30` to a reasonable value for the data. Choose appropriate colors, labels, themes, and/or and other types of formatting that you feel will enhance the meaning or visual appearance of the plot. 
 
 ```{r heightcomparison1}
-
+ggplot(galtondata1, aes(child_ht_raw, fill = child_sex)) +
+	geom_histogram(bins = 25, color = "black") + 
+	facet_grid(child_sex ~ .) +
+	scale_x_continuous(breaks = seq(55, 80, 1)) +
+	scale_y_continuous(breaks = seq(0, 85, 5)) +
+	labs(title = "The Raw Child Height Data",
+        x = "Child Height (Inches)", 
+		y = "Number of Children") + 
+scale_fill_discrete(name = "Gender of Child") +
+theme_linedraw()
 ```
 
 Use `group_by()` and `summarize()` to calculate the mean, standard deviation, minimum, median, and maximum of the measured heights for sons and daughters.
 
 ```{r rawhtsummaries}
-
+galtondata1 %>%
+ group_by(child_ht_raw) %>%
+ summarize(average = mean(child_ht_raw, na.rm = TRUE),
+           child_ht_standard_deviation = sd(galtondata1$child_ht_raw, na.rm = TRUE),
+           child_ht_minimum = min(galtondata1$child_ht_raw, na.rm = TRUE),
+           child_ht_median = median(galtondata1$child_ht_raw, na.rm = TRUE), 
+           child_ht_maximim = max(galtondata1$child_ht_raw, na.rm = TRUE)) %>%
+ na.omit()
 ```
 
 #### The Transmuted Data
@@ -142,13 +186,28 @@ Use `group_by()` and `summarize()` to calculate the mean, standard deviation, mi
 Create a similar plot as above, this time for `child_ht`. Be sure that the labels you use clearly distinguish between this plot and the previous one, especially if the other styling is very similar.
 
 ```{r heightcomparison2}
-
+ggplot(galtondata1, aes(child_ht, fill = child_sex)) +
+	geom_histogram(bins = 25, color = "black") + 
+	facet_grid(child_sex ~ .) +
+	scale_x_continuous(breaks = seq(55, 80, 1)) +
+	scale_y_continuous(breaks = seq(0, 85, 5)) +
+	labs(title = "The Transmuted Child Height Data",
+        x = "Child Transmuted Height (Inches)", 
+		y = "Number of Children") + 
+scale_fill_discrete(name = "Gender of Child")
 ```
 
 Use `group_by()` and `summarize()` to calculate the mean, standard deviation, minimum, median, and maximum of the transmuted heights for sons and daughters.
 
 ```{r transhtsummaries}
-
+galtondata1 %>%
+ group_by(child_ht) %>%
+ summarize(average = mean(child_ht, na.rm = TRUE),
+           child_ht_standard_deviation = sd(galtondata1$child_ht, na.rm = TRUE),
+           child_ht_minimum = min(galtondata1$child_ht, na.rm = TRUE),
+           child_ht_median = median(galtondata1$child_ht, na.rm = TRUE), 
+           child_ht_maximim = max(galtondata1$child_ht, na.rm = TRUE)) %>%
+ na.omit()
 ```
 
 ### Visualization 3: Number of Children
@@ -158,7 +217,15 @@ Use `group_by()` and `summarize()` to calculate the mean, standard deviation, mi
 Create a barplot to show the distribution of the number of children per family. Set the bars to something other than the default `width`. Scale the x-axis so that there is a tick mark for each bar. Choose appropriate colors, labels, themes, and/or and other types of formatting that you feel will enhance the meaning or visual appearance of the plot.  (Hint: Use `count()` to find out how many families have a given number of children, then use that smaller summary dataset to create your plot.)
 
 ```{r numchildrenbarplot}
-
+parentdata %>%
+  count(num_children) %>%
+ggplot(aes(x = num_children, y = n)) +
+	geom_col(width = 0.8, color = "black", fill = "brown") +
+	scale_x_continuous(breaks = seq(0, 16, 1)) +
+	labs(title = "Number of Children per Family",
+        x = "Number of Children",
+        y = "Number of Families") +
+theme_linedraw()
 ```
 
 <hr>
@@ -168,25 +235,25 @@ Create a barplot to show the distribution of the number of children per family. 
 **Question 1:** Do you think your scatterplot is an improvement over Galton's original diagram? Are there any other modifications and/or additions you would make to enhance the clarity or usefulness of your plot?
 
 **ANSWER**
+We believe that our scatterplot is an improvement over Galton's original diagram because it is easier to look at and read. We are able to tell from our scatterplot that the data has a positive correlation, which we weren't able to tell from Galtons original diagram. The other modifications or additions we would make to enhance the clarity and usefulness of this plot would be playing around with better color combinations, displaying the data in other ways or maybe even breaking up the scatterplot and using a faceted graph to look at the data.  
 
 **Question 2:** Did Galton's "transmuting" of daughters' heights succeed in making their data more similar to sons? How can you tell, based on your data visualizations and summaries?
 
 **ANSWER**
 
-ERASE THIS TEXT AND ANSWER QUESTION HERE
+Galton's "transmuting" of daughters' heights succeeded in making their data more similar to the sons. We can tell that this is true because when we look at our data visualizations and summaries, the two data sets look very similar. When we compare the two, the first with the raw data and the second with the transmuted data, it makes it even easier to see that the data becomes more similar. In the raw data plots, the daughters data was skewed to the right and the sons was skewed to the left. When transmuting, the new plots has the daughters data closely aligned and centered with the son's data. 
 
 **Question 3:** Explain the rationale behind the choices you made when creating your plots, such as size, color, transparency, or other features that were not explicitly stated. What motivated your decisions? 
 
 **ANSWER**
 
-ERASE THIS TEXT AND ANSWER QUESTION HERE
+Some of the features not explicitly stated were to change dot size and transparency for visual one, without giving us an exact number to change them to. We decided to use the numbers we chose for these because once our plot was created, it made the plot more aesthetically pleasing to see. For visual two, we decided to use "scale_fill_discrete" to make our bar graphs filled with gender, making them appear pink for daughters and blue for sons. We also decided to use "theme_linedraw" for a few plots as well to enhance visualization of our plots.
 
 **Question 4:** Considering best practices, how does using `coord_fixed()` enhance the authenticity of the information shown in the scatterplot, such as the relationship and spread of the data?
 
 **ANSWER**
 
-ERASE THIS TEXT AND ANSWER QUESTION HERE
-
+Coord_fixed() was used in order to fix the ratio of length on both the x and the y axes. This allows both axes to have equal scales and it makes the entire plot more pleasing to the eye. Not only does it make it more pleasing to the eye but it also keeps the scale the same so that it doesn't wrongly depict the plot by stretching it out. The relationship is displayed between the axes more which allows the viewer to understand the information easier and see how both variables are connected. Also, if the data is clumped close together, it has the ability to spread it out on the graph. And vice versa.
 ***
 ```{r}
 sessionInfo()
